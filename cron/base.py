@@ -53,8 +53,7 @@ class Cron(object):
 
     run_cron = classmethod(run_cron)
 
-    #get_all_crons = staticmethod(loading.registry.get_all_crons)
-    get_all_crons = loading.registry.get_all_crons
+    get_all_crons = staticmethod(loading.registry.get_all_crons)
 
 
     def job(self):
