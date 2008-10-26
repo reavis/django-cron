@@ -20,14 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-from django.db import models
+from django.dispatch import Signal
 
-class Job(models.Model):
-    name = models.CharField()
-    instance = models.TextField()
-    args = models.TextField()
-    kwargs = models.TextField()
-    queued = models.BooleanField(default=False)
-
-class Cron(models.Model):
-    executing = models.BooleanField(default=False)
+cron_queued = Signal()
+cron_done = Signal(providing_args=["job"])

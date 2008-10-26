@@ -1,70 +1,97 @@
+"""
+Copyright (c) 2007-2008, Dj Gilcrease
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+"""
+import cPickle
+from threading import Timer
 from datetime import datetime
-from apps.cron import  loading, models
 
-class CronBase(type):
-    def __new__(cls, name, bases, attrs):
-        # If this isn't a subclass of Cron, don't do anything special.
-        try:
-            if not filter(lambda b: issubclass(b, Cron), bases):
-                return super(CronBase, cls).__new__(cls, name, bases, attrs)
-        except NameError:
-            # 'Model' isn't defined yet, meaning we're looking at Django's own
-            # Model class, defined below.
-            return super(CronBase, cls).__new__(cls, name, bases, attrs)
+from apps.cron.signals import cron_done
+from apps.cron import models
 
-        if 'run_every' not in attrs:
-            attrs['run_every'] = 86400
-        else:
-            attrs['run_every'] *= 3600
+class AlreadyRegistered(Exception):
+    pass
 
-        # Create the class.
-        module = type.__new__(cls, name, bases, attrs)
-
-        # Register the class for future reference
-        loading.registry.register(name, module)
-
-        return module
-
-class Cron(object):
-    __metaclass__ = CronBase
+class Job(object):
     run_every = 86400
 
-    def __init__(self, id='', **kwargs):
-        self.id = id
-        cron_type = models.CronType.for_class(self.__class__)
-        self._record = models.Cron.objects.get_or_create(type=cron_type)[0]
-        self.type = cron_type
+    def run(self, *args, **kwargs):
+        cron_done.send(self)
 
-    def run_cron(cls):
+class CronScheduler(object):
+    def register(self, job, *args, **kwargs):
         """
-        Return a list of cron instances that are valid.
+            Register the given Job with the scheduler class
         """
-        crons = cls.get_all_crons()
 
-        ret = {'cron_jobs':{'run':0, 'succeeded':0}}
-        for c in crons:
-            cron = c()
-            if cron.next_run <= datetime.now() and cron.job():
-                cron._record.run()
-                ret['cron_jobs']['succeeded'] += 1
-            ret['cron_jobs']['run'] += 1
+        if not isinstance(job, Job):
+            raise TypeError("You can only register a Job not a %r" % job)
 
-        return ret
+        try:
+            job = models.Job.objects.get(name__exact=str(job.__class__))
+            job.args = cPickle.dumps(args)
+            job.kwargs = cPickle.dumps(kwargs)
+            job.save()
+        except models.Job.DoesNotExist:
+            job = models.Job(name=str(job.__class__), instance=cPickle.dumps(job()),
+                        args=cPickle.dumps(args), kwargs=cPickle.dumps(kwargs),
+                        last_executed=datetime.now(), queued=False)
+            job.save()
 
-    run_cron = classmethod(run_cron)
-
-    get_all_crons = staticmethod(loading.registry.get_all_crons)
-
-
-    def job(self):
+    def execute(self):
         """
-        The Job to Execute
+            Que all Jobs for execution
         """
-        return False
+        status = models.Cron.objects.get_or_create(pk=1)
+        if status.executing:
+            return
 
-    def get_next_run(self):
-        return self._record.next_run
-    next_run = property(get_next_run)
+        status.executing = True
+        status.save()
 
-    def __unicode__(self):
-        return SafeUnicode(unicode(self.render()))
+        jobs = models.Job.objects.all()
+        for job in jobs:
+            try:
+                inst = cPickle.loads(job.instance)
+                args = cPickle.loads(job.args)
+                kwargs = cPickle.loads(job.kwargs)
+                if not inst.queued:
+                    Timer(inst.run_every, inst.run, args=args, kwargs=kwargs).start()
+                    job.queued = True
+                    job.instance = cPickle.dumps(inst)
+                    job.save()
+            except Exception:
+                job.delete()
+
+        status.executing = False
+        status.save()
+
+    def _requeue(self, sender, **kwargs):
+        if not isinstance(sender, Job):
+            raise TypeError("You can only requeue a Job not a %r" % sender)
+
+        job = models.Job.objects.get(name__exact=str(sender.__class__))
+        job.instance = cPickle.dumps(sender)
+        job.queued = False
+        job.save()
+
+
+cron = CronScheduler()
