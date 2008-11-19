@@ -22,8 +22,9 @@ THE SOFTWARE.
 """
 from datetime import datetime
 
-from apps.cron import cron, Job, models
 from django.contrib.sessions.models import Session
+
+from cron import cron, Job, models
 
 class Execute(Job):
     """

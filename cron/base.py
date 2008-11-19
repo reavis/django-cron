@@ -24,8 +24,8 @@ import cPickle
 from threading import Timer
 from datetime import datetime
 
-from apps.cron.signals import cron_done
-from apps.cron import models
+from cron.signals import cron_done
+from cron import models
 
 class AlreadyRegistered(Exception):
     pass
