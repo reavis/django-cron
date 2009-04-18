@@ -42,8 +42,8 @@ class CheckMail(Job):
 		Cron Job that checks the lgr users mailbox and adds any approved senders' attachments to the db
 	"""
 
-	# run every 360 seconds (5 minutes)
-	run_every = 360
+	# run every 300 seconds (5 minutes)
+	run_every = 300
 		
 	def job(self):
 		# This will be executed every 5 minutes
