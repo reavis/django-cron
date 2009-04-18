@@ -20,7 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-from apps.cron.base import cron, Job
+from base import Job, cron
 
 def autodiscover():
     """
@@ -30,6 +30,10 @@ def autodiscover():
     """
     import imp
     from django.conf import settings
+    
+    # We're about to import a bunch of files called cron, so let's temporarily
+    # reassign cron to another value
+    cronScheduler = cron
 
     for app in settings.INSTALLED_APPS:
         # For each app, we need to look for an cron.py inside that app's
@@ -58,3 +62,10 @@ def autodiscover():
         # Step 3: import the app's cron file. If this has errors we want them
         # to bubble up.
         __import__("%s.cron" % app)
+        
+	# all the importing of other cron files sometimes overwrites this module 
+	# so we reassign it back to its orginal value
+	cron = cronScheduler
+	
+	# Get those cron jobs started!
+	cron.execute()
