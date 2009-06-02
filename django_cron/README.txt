@@ -32,14 +32,16 @@ In the meantime, django_cron is best used to execute tasks that occur relatively
 
 == Example cron.py ==
 
-from django_cron.base import cron, Job
+from django_cron import cronScheduler, Job
 
-# This is a function I wrote to check a feedback email address and add it to our database. Replace with your own imports
+# This is a function I wrote to check a feedback email address
+# and add it to our database. Replace with your own imports
 from MyMailFunctions import check_feedback_mailbox
 
 class CheckMail(Job):
 	"""
-		Cron Job that checks the lgr users mailbox and adds any approved senders' attachments to the db
+	Cron Job that checks the lgr users mailbox and adds any 
+	approved senders' attachments to the db
 	"""
 
 	# run every 300 seconds (5 minutes)
@@ -49,4 +51,4 @@ class CheckMail(Job):
 		# This will be executed every 5 minutes
 		check_feedback_mailbox()
 
-cron.register(CheckMail)
+cronScheduler.register(CheckMail)

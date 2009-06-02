@@ -21,13 +21,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 from django.db import models
+from datetime import datetime
 
 class Job(models.Model):
     name = models.CharField(max_length=100)
+    
+    # time between job runs (in seconds) // default: 1 day
+    run_frequency = models.PositiveIntegerField(default=86400)
+    last_run = models.DateTimeField(default=datetime.now())
+    
     instance = models.TextField()
     args = models.TextField()
     kwargs = models.TextField()
-    queued = models.BooleanField(default=False)
+    queued = models.BooleanField(default=True)
 
 class Cron(models.Model):
     executing = models.BooleanField(default=False)
