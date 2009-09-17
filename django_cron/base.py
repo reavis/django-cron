@@ -36,16 +36,6 @@ import models
 # default value: 300 seconds == 5 min
 polling_frequency = getattr(settings, "CRON_POLLING_FREQUENCY", 300)
 
-try:
-	# Delete all the old jobs from the database so they don't interfere with this instance of django
-	oldJobs = models.Job.objects.all()
-	for oldJob in oldJobs:
-		oldJob.delete()
-except:
-	# When you do syncdb for the first time, the table isn't 
-	# there yet and throws a nasty error... until now
-	pass
-
 class AlreadyRegistered(Exception):
 	pass
 
