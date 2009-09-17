@@ -36,9 +36,6 @@ import models
 # default value: 300 seconds == 5 min
 polling_frequency = getattr(settings, "CRON_POLLING_FREQUENCY", 300)
 
-class AlreadyRegistered(Exception):
-	pass
-
 class Job(object):
 	# 86400 seconds == 24 hours
 	run_every = 86400
@@ -54,15 +51,15 @@ class Job(object):
 		pass
 
 class CronScheduler(object):
-	def register(self, job, *args, **kwargs):
+	def register(self, job_class, *args, **kwargs):
 		"""
 		Register the given Job with the scheduler class
 		"""
 		
-		job_instance = job()
+		job_instance = job_class()
 		
 		if not isinstance(job_instance, Job):
-			raise TypeError("You can only register a Job not a %r" % job)
+			raise TypeError("You can only register a Job not a %r" % job_class)
 
 		job, created = models.Job.objects.get_or_create(name=str(job_instance.__class__))
 		if created:
@@ -126,3 +123,4 @@ class CronScheduler(object):
 
 
 cronScheduler = CronScheduler()
+
