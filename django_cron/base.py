@@ -99,8 +99,15 @@ class CronScheduler(object):
 			return
 
 		status.executing = True
-		status.save()
-
+		try:
+			status.save()
+		except:
+			# this will fail if you're debugging, so we want it
+			# to fail silently and start the timer again so we 
+			# can pick up where we left off once debugging is done
+			Timer(polling_frequency, self.execute).start()
+			return
+			
 		jobs = models.Job.objects.all()
 		for job in jobs:
 			if job.queued:
