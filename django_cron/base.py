@@ -98,7 +98,8 @@ class CronScheduler(object):
 		jobs = models.Job.objects.all()
 		for job in jobs:
 			if job.queued:
-				if (datetime.now() - job.last_run).seconds > job.run_frequency:
+				time_delta = datetime.now() - job.last_run
+				if (time_delta.seconds + 86400*time_delta.days) > job.run_frequency:
 					inst = cPickle.loads(str(job.instance))
 					args = cPickle.loads(str(job.args))
 					kwargs = cPickle.loads(str(job.kwargs))
