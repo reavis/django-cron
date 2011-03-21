@@ -26,6 +26,8 @@ from django.conf import settings
 
 from base import Job, cronScheduler
 
+polling_frequency = getattr(settings, "CRON_POLLING_FREQUENCY", 300)
+
 def autodiscover():
 	"""
 	Auto-discover INSTALLED_APPS cron.py modules and fail silently when
